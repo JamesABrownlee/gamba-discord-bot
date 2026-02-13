@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from gamba_bot.utils.currency import format_cents
 
 
 class CoreCog(commands.Cog):
@@ -23,7 +24,7 @@ class CoreCog(commands.Cog):
         record = await self.bot.db.ensure_user(interaction.user)
         await self.bot.responses.send_or_followup(
             interaction,
-            content=f"Balance for `{record.display_name}`: `{record.balance}` credits",
+            content=f"Balance for `{record.display_name}`: `{format_cents(record.balance)}` credits",
         )
 
     @balance.error

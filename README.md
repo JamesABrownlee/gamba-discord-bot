@@ -48,16 +48,17 @@ docker compose down
 ## Commands
 
 - `/balance`
-- `/roulette stake:<int> pick:<red|black|green>`
-- `/slots stake:<int>`
-- `/blackjack stake:<int>`
-- `/poker stake:<int>`
-- `/minesweeper stake:<int> tile:<1-6>`
-- `/wordlinks stake:<int> guess:<1-20>`
+- `/roulette stake:<decimal> pick:<red|black|green>`
+- `/slots stake:<decimal>`
+- `/blackjack`
+- `/poker stake:<decimal>`
+- `/minesweeper stake:<decimal> tile:<1-6>`
+- `/wordlinks stake:<decimal> guess:<1-20>`
 
 ## Notes
 
 - User records are auto-created on first interaction (`/command`, DM usage, or bot mention).
 - Database is SQLite (`DATABASE_PATH`, default `./data/gamba.db`).
+- Balances are stored as cent-units (`100000` = `1000.00` credits).
 - Slash command propagation may take time globally on Discord.
 - GitHub Actions workflow at `.github/workflows/docker-image.yml` builds image on push/PR and publishes to `ghcr.io/<owner>/<repo>` on non-PR events.

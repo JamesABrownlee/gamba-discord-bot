@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from gamba_bot.cogs.common import EconomyCog
 from gamba_bot.services.games import roulette
+from gamba_bot.utils.currency import parse_credits_to_cents
 
 
 class RouletteCog(EconomyCog):
@@ -15,14 +16,15 @@ class RouletteCog(EconomyCog):
     async def roulette_cmd(
         self,
         interaction: discord.Interaction,
-        stake: app_commands.Range[int, 1, 1_000_000],
+        stake: app_commands.Range[float, 0.01, 50_000_000],
         pick: Literal["red", "black", "green"],
     ) -> None:
+        stake_cents = parse_credits_to_cents(stake)
         await self.play(
             interaction,
-            stake=stake,
+            stake=stake_cents,
             title="Roulette",
-            game_fn=lambda: roulette(stake, pick),
+            game_fn=lambda: roulette(stake_cents, pick),
         )
 
 

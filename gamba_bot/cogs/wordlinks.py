@@ -4,6 +4,7 @@ from discord.ext import commands
 
 from gamba_bot.cogs.common import EconomyCog
 from gamba_bot.services.games import wordlinks
+from gamba_bot.utils.currency import parse_credits_to_cents
 
 
 class WordlinksCog(EconomyCog):
@@ -13,14 +14,15 @@ class WordlinksCog(EconomyCog):
     async def wordlinks_cmd(
         self,
         interaction: discord.Interaction,
-        stake: app_commands.Range[int, 1, 1_000_000],
+        stake: app_commands.Range[float, 0.01, 50_000_000],
         guess: app_commands.Range[int, 1, 20],
     ) -> None:
+        stake_cents = parse_credits_to_cents(stake)
         await self.play(
             interaction,
-            stake=stake,
+            stake=stake_cents,
             title="Word Links",
-            game_fn=lambda: wordlinks(stake, guess),
+            game_fn=lambda: wordlinks(stake_cents, guess),
         )
 
 

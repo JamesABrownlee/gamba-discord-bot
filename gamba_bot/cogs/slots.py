@@ -12,6 +12,7 @@ from gamba_bot.services.games import (
     slot_paytable_lines,
     spin_slot_reels,
 )
+from gamba_bot.utils.currency import format_cents, parse_credits_to_cents
 
 
 class HoldButton(discord.ui.Button):
@@ -101,12 +102,12 @@ class SlotsView(discord.ui.View):
             ),
             inline=False,
         )
-        embed.add_field(name="Stake / Spin", value=f"`{self.stake}` credits", inline=True)
-        embed.add_field(name="Balance", value=f"`{self.balance}` credits", inline=True)
+        embed.add_field(name="Stake / Spin", value=f"`{format_cents(self.stake)}` credits", inline=True)
+        embed.add_field(name="Balance", value=f"`{format_cents(self.balance)}` credits", inline=True)
         if self.last_result:
             embed.add_field(
                 name="Last Spin",
-                value=f"{self.last_result.reason}\nNet: `{self.last_result.net_delta}`",
+                value=f"{self.last_result.reason}\nNet: `{format_cents(self.last_result.net_delta)}`",
                 inline=False,
             )
         embed.set_footer(text=footer)
@@ -168,11 +169,11 @@ class SlotsView(discord.ui.View):
 
             self.balance = record.balance
             if result.net_delta > 0:
-                footer = f"You won {result.gross_win} (net +{result.net_delta})."
+                footer = f"You won {format_cents(result.gross_win)} (net +{format_cents(result.net_delta)})."
             elif result.net_delta == 0:
                 footer = "Break-even spin."
             else:
-                footer = f"No payout. Lost {abs(result.net_delta)}."
+                footer = f"No payout. Lost {format_cents(abs(result.net_delta))}."
             embed = self.build_embed(footer=footer)
             await interaction.edit_original_response(embed=embed, view=self)
 
@@ -187,11 +188,12 @@ class SlotsCog(commands.Cog):
     async def slots_cmd(
         self,
         interaction: discord.Interaction,
-        stake: app_commands.Range[int, 1, 1_000_000],
+        stake: app_commands.Range[float, 0.01, 50_000_000],
     ) -> None:
         await self.bot.responses.defer(interaction)
+        stake_cents = parse_credits_to_cents(stake)
         record = await self.bot.db.ensure_user(interaction.user)
-        if record.balance < stake:
+        if record.balance < stake_cents:
             await interaction.edit_original_response(
                 content="Insufficient balance for that stake.",
                 embed=None,
@@ -202,7 +204,7 @@ class SlotsCog(commands.Cog):
         view = SlotsView(
             self.bot,
             origin_interaction=interaction,
-            stake=stake,
+            stake=stake_cents,
             user_record=record,
         )
         embed = view.build_embed(footer="Press Spin to play. Use Hold buttons to lock reels.")

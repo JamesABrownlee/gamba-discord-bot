@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from gamba_bot.database import InsufficientBalanceError
 from gamba_bot.services.games import GameResult
+from gamba_bot.utils.currency import format_cents
 
 
 class EconomyCog(commands.Cog):
@@ -42,15 +43,15 @@ class EconomyCog(commands.Cog):
             return
 
         if result.won:
-            outcome = f"won `{max(result.delta, 0)}` credits"
+            outcome = f"won `{format_cents(max(result.delta, 0))}` credits"
         elif result.delta == 0:
             outcome = "pushed and kept your credits"
         else:
-            outcome = f"lost `{abs(result.delta)}` credits"
+            outcome = f"lost `{format_cents(abs(result.delta))}` credits"
         msg = (
             f"**{title}**\n"
             f"{result.detail}\n"
             f"You {outcome}.\n"
-            f"New balance: `{record.balance}`"
+            f"New balance: `{format_cents(record.balance)}`"
         )
         await self.bot.responses.edit_original(interaction, content=msg)

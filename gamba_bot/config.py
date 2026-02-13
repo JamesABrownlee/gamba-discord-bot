@@ -18,7 +18,7 @@ class Settings:
             raise ValueError("DISCORD_TOKEN is required.")
 
         database_path = os.getenv("DATABASE_PATH", "./data/gamba.db")
-        starting_balance = int(os.getenv("STARTING_BALANCE", "1000"))
+        starting_balance = int(os.getenv("STARTING_BALANCE", "100000"))
         return cls(
             discord_token=token,
             database_path=database_path,

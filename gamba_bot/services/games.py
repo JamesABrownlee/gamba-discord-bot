@@ -57,8 +57,10 @@ class BlackjackRound:
         return card
 
 
-def create_blackjack_round() -> BlackjackRound:
-    deck = [f"{rank}{suit}" for suit in SUITS for rank in RANKS]
+def create_blackjack_round(num_decks: int = 8) -> BlackjackRound:
+    if num_decks < 1:
+        raise ValueError("num_decks must be at least 1")
+    deck = [f"{rank}{suit}" for _ in range(num_decks) for suit in SUITS for rank in RANKS]
     random.shuffle(deck)
     round_state = BlackjackRound(deck=deck)
     round_state.player_hand.append(round_state.draw())

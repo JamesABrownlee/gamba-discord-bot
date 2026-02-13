@@ -4,6 +4,7 @@ from discord.ext import commands
 
 from gamba_bot.cogs.common import EconomyCog
 from gamba_bot.services.games import poker
+from gamba_bot.utils.currency import parse_credits_to_cents
 
 
 class PokerCog(EconomyCog):
@@ -13,13 +14,14 @@ class PokerCog(EconomyCog):
     async def poker_cmd(
         self,
         interaction: discord.Interaction,
-        stake: app_commands.Range[int, 1, 1_000_000],
+        stake: app_commands.Range[float, 0.01, 50_000_000],
     ) -> None:
+        stake_cents = parse_credits_to_cents(stake)
         await self.play(
             interaction,
-            stake=stake,
+            stake=stake_cents,
             title="Poker",
-            game_fn=lambda: poker(stake),
+            game_fn=lambda: poker(stake_cents),
         )
 
 
