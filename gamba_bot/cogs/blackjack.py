@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import discord
 from discord import app_commands
@@ -56,14 +57,17 @@ class BlackjackView(discord.ui.View):
         stake: int,
         round_state: BlackjackRound,
     ) -> None:
-        super().__init__(timeout=90)
+        super().__init__(timeout=None)
         self.bot = bot
         self.origin_interaction = origin_interaction
         self.user_id = origin_interaction.user.id
         self.stake = stake
         self.round_state = round_state
         self.finished = False
+        self.idle_timeout_seconds = 60.0
+        self.last_action = time.monotonic()
         self._finalize_lock = asyncio.Lock()
+        self._watchdog_task = asyncio.create_task(self._idle_watchdog())
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
@@ -75,14 +79,19 @@ class BlackjackView(discord.ui.View):
         return True
 
     async def on_timeout(self) -> None:
-        if self.finished:
-            return
-        await self._finalize_round(
-            interaction=None,
-            delta=-self.stake,
-            summary="Hand timed out. Stake lost.",
-            reveal_dealer=True,
-        )
+        return
+
+    async def _idle_watchdog(self) -> None:
+        while not self.finished:
+            await asyncio.sleep(2)
+            if time.monotonic() - self.last_action >= self.idle_timeout_seconds:
+                await self._finalize_round(
+                    interaction=None,
+                    delta=-self.stake,
+                    summary="No action for 60 seconds. Stake lost.",
+                    reveal_dealer=True,
+                )
+                return
 
     async def _finalize_round(
         self,
@@ -96,6 +105,8 @@ class BlackjackView(discord.ui.View):
             if self.finished:
                 return
             self.finished = True
+            if self._watchdog_task and not self._watchdog_task.done():
+                self._watchdog_task.cancel()
             self._disable_inputs()
             try:
                 record = await self.bot.db.settle_bet(
@@ -123,20 +134,28 @@ class BlackjackView(discord.ui.View):
             )
             target = interaction or self.origin_interaction
             if interaction is not None and not interaction.response.is_done():
-                await interaction.response.edit_message(embed=final_embed, view=self)
-            else:
-                await target.edit_original_response(embed=final_embed, view=self)
+                try:
+                    await interaction.response.edit_message(embed=final_embed, view=self)
+                    self.stop()
+                    return
+                except discord.NotFound:
+                    pass
+            await target.edit_original_response(embed=final_embed, view=self)
+            self.stop()
 
     def _disable_inputs(self) -> None:
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
 
-    @discord.ui.button(label="Hit", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Hit", style=discord.ButtonStyle.primary, custom_id="blackjack_hit")
     async def hit(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
+        self.last_action = time.monotonic()
         card = self.round_state.player_hit()
         player_total = hand_total(self.round_state.player_hand)
         if player_total > 21:
+            if not interaction.response.is_done():
+                await interaction.response.defer()
             await self._finalize_round(
                 interaction=interaction,
                 delta=-self.stake,
@@ -153,8 +172,11 @@ class BlackjackView(discord.ui.View):
         )
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Stick", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Stick", style=discord.ButtonStyle.secondary, custom_id="blackjack_stick")
     async def stick(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
+        self.last_action = time.monotonic()
+        if not interaction.response.is_done():
+            await interaction.response.defer()
         while dealer_must_hit(self.round_state.dealer_hand):
             self.round_state.dealer_hit()
 

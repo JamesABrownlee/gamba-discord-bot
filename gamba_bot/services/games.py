@@ -10,6 +10,14 @@ class GameResult:
     detail: str
 
 
+@dataclass(frozen=True)
+class SlotResult:
+    symbols: tuple[str, str, str]
+    gross_win: int
+    net_delta: int
+    reason: str
+
+
 RANKS = ("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
 SUITS = ("S", "H", "D", "C")
 CARD_VALUES = {
@@ -94,15 +102,121 @@ def roulette(stake: int, pick: Literal["red", "black", "green"]) -> GameResult:
     return GameResult(False, -stake, f"Ball landed on {actual} ({wheel}).")
 
 
-def slots(stake: int) -> GameResult:
-    symbols = ["7", "BAR", "Cherry", "Bell", "Star"]
-    a, b, c = random.choices(symbols, k=3)
-    line = f"{a} | {b} | {c}"
+SLOT_EMOJI = {
+    "seven": "7️⃣",
+    "diamond": "💎",
+    "bar": "🟫",
+    "bell": "🔔",
+    "grape": "🍇",
+    "lemon": "🍋",
+    "cherry": "🍒",
+}
+
+# Reel strips model weighted symbol frequencies and therefore real symbol odds.
+SLOT_REELS: tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]] = (
+    tuple(
+        ["cherry"] * 14
+        + ["lemon"] * 13
+        + ["grape"] * 9
+        + ["bell"] * 7
+        + ["bar"] * 5
+        + ["diamond"] * 3
+        + ["seven"] * 2
+    ),
+    tuple(
+        ["cherry"] * 15
+        + ["lemon"] * 12
+        + ["grape"] * 8
+        + ["bell"] * 8
+        + ["bar"] * 5
+        + ["diamond"] * 3
+        + ["seven"] * 1
+    ),
+    tuple(
+        ["cherry"] * 13
+        + ["lemon"] * 14
+        + ["grape"] * 9
+        + ["bell"] * 7
+        + ["bar"] * 5
+        + ["diamond"] * 3
+        + ["seven"] * 2
+    ),
+)
+
+SLOT_3OAK_MULTIPLIERS = {
+    "seven": 20.0,
+    "diamond": 12.0,
+    "bar": 8.0,
+    "bell": 5.0,
+    "grape": 3.0,
+    "lemon": 2.5,
+    "cherry": 2.0,
+}
+
+
+def spin_slot_reels(
+    current_stops: list[int] | None,
+    holds: list[bool],
+) -> tuple[list[int], tuple[str, str, str]]:
+    if len(holds) != 3:
+        raise ValueError("Holds must contain exactly 3 values.")
+    if current_stops is None:
+        current_stops = [0, 0, 0]
+
+    stops: list[int] = []
+    symbols: list[str] = []
+    for idx, reel in enumerate(SLOT_REELS):
+        if holds[idx]:
+            stop = current_stops[idx] % len(reel)
+        else:
+            stop = random.randint(0, len(reel) - 1)
+        stops.append(stop)
+        symbols.append(reel[stop])
+    return stops, (symbols[0], symbols[1], symbols[2])
+
+
+def evaluate_slots(symbols: tuple[str, str, str], stake: int) -> SlotResult:
+    if stake <= 0:
+        raise ValueError("Stake must be greater than zero.")
+
+    a, b, c = symbols
     if a == b == c:
-        return GameResult(True, stake * 5, f"{line} - jackpot!")
-    if a == b or b == c or a == c:
-        return GameResult(True, stake, f"{line} - small win.")
-    return GameResult(False, -stake, f"{line} - no match.")
+        multiplier = SLOT_3OAK_MULTIPLIERS[a]
+        gross = max(1, int(round(stake * multiplier)))
+        return SlotResult(symbols, gross, gross - stake, f"Three {a}s ({multiplier}x)")
+
+    cherries = symbols.count("cherry")
+    if cherries == 2:
+        multiplier = 1.2
+        gross = max(1, int(round(stake * multiplier)))
+        return SlotResult(symbols, gross, gross - stake, "Two cherries (1.2x)")
+    if cherries == 1:
+        multiplier = 0.4
+        gross = max(1, int(round(stake * multiplier)))
+        return SlotResult(symbols, gross, gross - stake, "One cherry (0.4x)")
+
+    return SlotResult(symbols, 0, -stake, "No payout")
+
+
+def slot_paytable_lines() -> list[str]:
+    lines = []
+    for symbol, mult in SLOT_3OAK_MULTIPLIERS.items():
+        emoji = SLOT_EMOJI[symbol]
+        lines.append(f"{emoji} {emoji} {emoji} -> {mult}x")
+    lines.append("🍒 🍒 _ -> 1.2x")
+    lines.append("🍒 _ _ -> 0.4x")
+    return lines
+
+
+def slots(stake: int) -> GameResult:
+    _, symbols = spin_slot_reels(None, [False, False, False])
+    result = evaluate_slots(symbols, stake)
+    pretty = " | ".join(SLOT_EMOJI[s] for s in symbols)
+    return GameResult(
+        won=result.net_delta >= 0,
+        delta=result.net_delta,
+        detail=f"{pretty} - {result.reason}",
+    )
 
 
 def poker(stake: int) -> GameResult:
