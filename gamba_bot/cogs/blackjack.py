@@ -96,7 +96,7 @@ class BlackjackView(discord.ui.View):
             if self.finished:
                 return
             self.finished = True
-            self.disable_all_items()
+            self._disable_inputs()
             try:
                 record = await self.bot.db.settle_bet(
                     self.origin_interaction.user,
@@ -126,6 +126,11 @@ class BlackjackView(discord.ui.View):
                 await interaction.response.edit_message(embed=final_embed, view=self)
             else:
                 await target.edit_original_response(embed=final_embed, view=self)
+
+    def _disable_inputs(self) -> None:
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.primary)
     async def hit(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
