@@ -14,7 +14,7 @@ class PokerCog(EconomyCog):
     async def poker_cmd(
         self,
         interaction: discord.Interaction,
-        stake: app_commands.Range[float, 0.01, 50_000_000],
+        stake: app_commands.Range[float, 0.01, 50_000_000.0],
     ) -> None:
         stake_cents = parse_credits_to_cents(stake)
         await self.play(

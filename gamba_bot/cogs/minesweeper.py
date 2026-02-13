@@ -14,7 +14,7 @@ class MinesweeperCog(EconomyCog):
     async def minesweeper_cmd(
         self,
         interaction: discord.Interaction,
-        stake: app_commands.Range[float, 0.01, 50_000_000],
+        stake: app_commands.Range[float, 0.01, 50_000_000.0],
         tile: app_commands.Range[int, 1, 6],
     ) -> None:
         stake_cents = parse_credits_to_cents(stake)

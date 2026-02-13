@@ -115,3 +115,26 @@ class Database:
         assert record is not None
         return record
 
+    async def add_credits(self, user: discord.abc.User, amount: int) -> UserRecord:
+        if amount <= 0:
+            raise ValueError("Amount must be greater than zero.")
+
+        await self.ensure_user(user)
+        assert self._conn is not None
+        now = datetime.now(timezone.utc).isoformat()
+        async with self._conn.execute(
+            "SELECT balance FROM users WHERE user_id = ?",
+            (user.id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        assert row is not None
+        new_balance = int(row["balance"]) + amount
+
+        await self._conn.execute(
+            "UPDATE users SET balance = ?, display_name = ?, updated_at = ? WHERE user_id = ?",
+            (new_balance, user.display_name, now, user.id),
+        )
+        await self._conn.commit()
+        record = await self.get_user(user.id)
+        assert record is not None
+        return record
