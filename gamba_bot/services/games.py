@@ -1,5 +1,5 @@
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 
@@ -8,6 +8,78 @@ class GameResult:
     won: bool
     delta: int
     detail: str
+
+
+RANKS = ("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+SUITS = ("S", "H", "D", "C")
+CARD_VALUES = {
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "10": 10,
+    "J": 10,
+    "Q": 10,
+    "K": 10,
+    "A": 11,
+}
+
+
+@dataclass
+class BlackjackRound:
+    deck: list[str] = field(default_factory=list)
+    player_hand: list[str] = field(default_factory=list)
+    dealer_hand: list[str] = field(default_factory=list)
+
+    def draw(self) -> str:
+        return self.deck.pop()
+
+    def player_hit(self) -> str:
+        card = self.draw()
+        self.player_hand.append(card)
+        return card
+
+    def dealer_hit(self) -> str:
+        card = self.draw()
+        self.dealer_hand.append(card)
+        return card
+
+
+def create_blackjack_round() -> BlackjackRound:
+    deck = [f"{rank}{suit}" for suit in SUITS for rank in RANKS]
+    random.shuffle(deck)
+    round_state = BlackjackRound(deck=deck)
+    round_state.player_hand.append(round_state.draw())
+    round_state.dealer_hand.append(round_state.draw())
+    round_state.player_hand.append(round_state.draw())
+    round_state.dealer_hand.append(round_state.draw())
+    return round_state
+
+
+def hand_total(cards: list[str]) -> int:
+    total = 0
+    aces = 0
+    for card in cards:
+        rank = card[:-1]
+        total += CARD_VALUES[rank]
+        if rank == "A":
+            aces += 1
+    while total > 21 and aces > 0:
+        total -= 10
+        aces -= 1
+    return total
+
+
+def is_blackjack(cards: list[str]) -> bool:
+    return len(cards) == 2 and hand_total(cards) == 21
+
+
+def dealer_must_hit(cards: list[str]) -> bool:
+    return hand_total(cards) < 14
 
 
 def roulette(stake: int, pick: Literal["red", "black", "green"]) -> GameResult:
@@ -31,16 +103,6 @@ def slots(stake: int) -> GameResult:
     if a == b or b == c or a == c:
         return GameResult(True, stake, f"{line} - small win.")
     return GameResult(False, -stake, f"{line} - no match.")
-
-
-def blackjack(stake: int) -> GameResult:
-    player = random.randint(12, 21)
-    dealer = random.randint(12, 21)
-    if player > dealer:
-        return GameResult(True, int(stake * 1.5), f"Player {player} vs Dealer {dealer}")
-    if player == dealer:
-        return GameResult(True, 0, f"Push: {player} vs {dealer}")
-    return GameResult(False, -stake, f"Player {player} vs Dealer {dealer}")
 
 
 def poker(stake: int) -> GameResult:
