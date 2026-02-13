@@ -17,11 +17,6 @@ class CoreCog(commands.Cog):
         if self.bot.user and self.bot.user.mentioned_in(message):
             await self.bot.db.ensure_user(message.author)
 
-    @commands.Cog.listener()
-    async def on_interaction(self, interaction: discord.Interaction) -> None:
-        if interaction.user and not interaction.user.bot:
-            await self.bot.db.ensure_user(interaction.user)
-
     @app_commands.command(name="balance", description="Show your current credit balance.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def balance(self, interaction: discord.Interaction) -> None:
