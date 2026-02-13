@@ -188,11 +188,14 @@ class BlackjackCog(commands.Cog):
         interaction: discord.Interaction,
         stake: app_commands.Range[int, 1, 1_000_000],
     ) -> None:
+        await self.bot.responses.defer(interaction)
+
         user_record = await self.bot.db.ensure_user(interaction.user)
         if user_record.balance < stake:
-            await self.bot.responses.send_or_followup(
-                interaction,
+            await interaction.edit_original_response(
                 content="Insufficient balance for that stake.",
+                embed=None,
+                view=None,
             )
             return
 
@@ -205,9 +208,9 @@ class BlackjackCog(commands.Cog):
                 footer=f"Dealer has blackjack. You lose. New balance: {record.balance}",
                 reveal_dealer=True,
             )
-            await interaction.response.send_message(
+            await interaction.edit_original_response(
+                content=None,
                 embed=embed,
-                ephemeral=interaction.guild is not None,
             )
             return
 
@@ -220,9 +223,9 @@ class BlackjackCog(commands.Cog):
                 footer=f"Blackjack. You win {delta} credits. New balance: {record.balance}",
                 reveal_dealer=True,
             )
-            await interaction.response.send_message(
+            await interaction.edit_original_response(
+                content=None,
                 embed=embed,
-                ephemeral=interaction.guild is not None,
             )
             return
 
@@ -238,10 +241,10 @@ class BlackjackCog(commands.Cog):
             footer="Hit to draw, Stick to stand.",
             reveal_dealer=False,
         )
-        await interaction.response.send_message(
+        await interaction.edit_original_response(
+            content=None,
             embed=embed,
             view=view,
-            ephemeral=interaction.guild is not None,
         )
 
 
