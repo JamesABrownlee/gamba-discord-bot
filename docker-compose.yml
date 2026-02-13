@@ -1,0 +1,9 @@
+services:
+  gamba-bot:
+    build: .
+    container_name: gamba-bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
